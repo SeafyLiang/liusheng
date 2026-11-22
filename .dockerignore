@@ -1,0 +1,17 @@
+*
+!Dockerfile
+!Dockerfile.lx
+!VERSION
+!requirements.runtime.lock
+!app/
+!app/**
+!lx_runner/
+!lx_runner/**
+!frontend/
+!frontend/**
+!scripts/
+!scripts/pwa-cache.mjs
+frontend/node_modules
+frontend/dist
+**/__pycache__
+**/*.pyc

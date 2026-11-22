@@ -1,0 +1,13 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+const root = new URL('../frontend/dist/', import.meta.url);
+const html = await readFile(new URL('index.html', root), 'utf8');
+const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^\"]+)"/g)].map(m => m[1]);
+if (assets.length < 2) throw new Error('缺少 PWA 主程序构建文件');
+const swPath = new URL('sw.js', root);
+let sw = await readFile(swPath, 'utf8');
+const version = (await readFile(new URL('../VERSION', import.meta.url), 'utf8')).trim();
+sw = sw.replace('__BUILD_ID__', version + '-' + createHash('sha256').update(html).digest('hex').slice(0,12));
+sw = sw.replace("'/icon-512.png']", "'/icon-512.png'," + assets.map(x => JSON.stringify(x)).join(',') + ']');
+await writeFile(swPath, sw);
+console.log('PWA 首次离线缓存已包括 ' + assets.length + ' 个构建文件');

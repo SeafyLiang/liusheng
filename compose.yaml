@@ -1,0 +1,73 @@
+services:
+  app:
+    image: liusheng-app:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    user: "${LIUSHENG_UID:-1000}:${LIUSHENG_GID:-1000}"
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-38661}:8000"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      DATA_DIR: /data
+      MUSIC_DIR: /music
+      INBOX_DIR: /inbox
+      STATIC_DIR: /app/web
+      WORKER_ENABLED: "1"
+      TMPDIR: /data
+      LX_RUNNER_URL: http://lx-runner:8090
+      LX_RUNNER_TOKEN: ${LX_RUNNER_TOKEN:?Run python3 scripts/init-deploy.py first}
+      SPOTIFY_HTTPS_PROXY: ${SPOTIFY_HTTPS_PROXY:-}
+    volumes:
+      - ${DATA_PATH:-./data}:/data
+      - ${MUSIC_PATH:-./music}:/music
+      - ${INBOX_PATH:-./inbox}:/inbox
+    read_only: true
+    tmpfs:
+      - /tmp:size=134217728,mode=1777
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 512m
+    memswap_limit: 512m
+    stop_grace_period: 45s
+    depends_on:
+      lx-runner:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "3"}
+  lx-runner:
+    image: liusheng-lx:local
+    build:
+      context: .
+      dockerfile: Dockerfile.lx
+    restart: unless-stopped
+    init: true
+    user: "${LIUSHENG_UID:-1000}:${LIUSHENG_GID:-1000}"
+    environment:
+      LX_RUNNER_TOKEN: ${LX_RUNNER_TOKEN:?Run python3 scripts/init-deploy.py first}
+    read_only: true
+    tmpfs:
+      - /tmp:size=16777216,mode=1777
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 32
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options: {max-size: 2m, max-file: "2"}
